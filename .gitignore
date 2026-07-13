@@ -1,0 +1,19 @@
+# dependencies / build
+node_modules/
+dist/
+*.tsbuildinfo
+
+# logs & coverage
+*.log
+coverage/
+
+# editor / os
+.vscode/
+.idea/
+.DS_Store
+*.local
+
+# personal activity files used with the cli (location + hr data, keep private)
+*.gpx
+*.tcx
+*.fit

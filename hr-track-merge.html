@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Track + HR Merge</title>
+<style>
+  :root{
+    --bg:#0e1116;
+    --panel:#161b22;
+    --panel2:#1c232d;
+    --line:#2b3440;
+    --ink:#e6edf3;
+    --muted:#8b98a8;
+    --gps:#4cc2ff;      /* track blue */
+    --hr:#ff5a4d;       /* heart red */
+    --ok:#3fb950;
+    --warn:#e3b341;
+    --mono:"SFMono-Regular",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:var(--sans);font-size:14px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1040px;margin:0 auto;padding:28px 20px 60px}
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:4px}
+  h1{font-size:20px;margin:0;font-weight:600;letter-spacing:-.01em}
+  .tag{font-family:var(--mono);font-size:11px;color:var(--muted);border:1px solid var(--line);
+       padding:2px 8px;border-radius:20px}
+  .sub{color:var(--muted);margin:2px 0 24px;max-width:70ch}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}}
+  .drop{
+    background:var(--panel);border:1.5px dashed var(--line);border-radius:12px;
+    padding:20px;cursor:pointer;transition:border-color .15s,background .15s;position:relative;
+  }
+  .drop:hover{border-color:var(--gps)}
+  .drop.hr:hover{border-color:var(--hr)}
+  .drop.filled{border-style:solid}
+  .drop.filled.gps{border-color:var(--gps)}
+  .drop.filled.hr{border-color:var(--hr)}
+  .drop h3{margin:0 0 4px;font-size:13px;display:flex;align-items:center;gap:8px}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .dot.gps{background:var(--gps)}.dot.hr{background:var(--hr)}
+  .drop p{margin:0;color:var(--muted);font-size:12.5px}
+  .drop .fname{color:var(--ink);font-family:var(--mono);font-size:12px;margin-top:8px;word-break:break-all}
+  .drop input{display:none}
+  .metaline{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-family:var(--mono);
+            font-size:11px;color:var(--muted)}
+  .metaline b{color:var(--ink);font-weight:600}
+
+  .controls{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+            padding:18px 20px;margin-top:18px}
+  .ctl-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  label.small{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+  input[type=range]{width:260px;accent-color:var(--hr)}
+  input[type=number]{width:88px;background:var(--panel2);border:1px solid var(--line);
+    color:var(--ink);border-radius:7px;padding:6px 8px;font-family:var(--mono);font-size:13px}
+  .offsetval{font-family:var(--mono);font-size:13px;color:var(--ink);min-width:70px}
+
+  .viz{margin-top:18px;display:grid;grid-template-columns:1.1fr .9fr;gap:14px}
+  @media(max-width:720px){.viz{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .card h4{margin:0 0 10px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+          color:var(--muted);font-weight:600}
+  canvas{width:100%;display:block;border-radius:8px;background:var(--panel2)}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+        border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:18px}
+  @media(max-width:560px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:var(--panel);padding:14px 16px}
+  .stat .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .stat .v{font-family:var(--mono);font-size:21px;margin-top:3px;font-weight:600}
+  .stat .v small{font-size:12px;color:var(--muted);font-weight:400}
+
+  .cov{margin-top:14px;font-size:13px;color:var(--muted)}
+  .cov b{color:var(--ink)}
+  .bar{height:6px;background:var(--panel2);border-radius:4px;overflow:hidden;margin-top:6px}
+  .bar span{display:block;height:100%;background:var(--ok)}
+
+  .actions{margin-top:22px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  button.go{background:var(--gps);color:#04121c;border:none;padding:11px 20px;border-radius:9px;
+    font-weight:600;font-size:14px;cursor:pointer;transition:opacity .15s}
+  button.go:disabled{opacity:.35;cursor:not-allowed}
+  button.go:not(:disabled):hover{opacity:.9}
+  .hint{color:var(--muted);font-size:12.5px}
+  .empty{color:var(--muted);font-size:13px;padding:30px 4px;text-align:center}
+  .steps{margin-top:34px;border-top:1px solid var(--line);padding-top:20px;color:var(--muted);
+        font-size:13px;line-height:1.7}
+  .steps b{color:var(--ink)}
+  .steps code{font-family:var(--mono);background:var(--panel2);padding:1px 6px;border-radius:5px;
+    font-size:12px;color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Track + HR Merge</h1>
+    <span class="tag">phone GPS × watch heart rate → Strava GPX</span>
+  </header>
+  <p class="sub">Load the good GPS track from your phone and the heart-rate recording from your
+    T‑Rex Pro. This lines them up by timestamp, drops the watch's HR (and cadence, if present)
+    onto every phone trackpoint, and exports one clean GPX you can upload straight to Strava.
+    Accepts <b>.gpx</b> and <b>.tcx</b> for either side.</p>
+
+  <div class="grid">
+    <div class="drop gps" id="dropGps">
+      <h3><span class="dot gps"></span>Phone track — GPS</h3>
+      <p>The accurate route. Distance &amp; map come from this file.</p>
+      <div class="fname" id="nameGps"></div>
+      <div class="metaline" id="metaGps"></div>
+      <input type="file" id="fileGps" accept=".gpx,.tcx,.xml">
+    </div>
+    <div class="drop hr" id="dropHr">
+      <h3><span class="dot hr"></span>Watch track — heart rate</h3>
+      <p>Your Zepp/watch export. Only the HR stream is pulled from here.</p>
+      <div class="fname" id="nameHr"></div>
+      <div class="metaline" id="metaHr"></div>
+      <input type="file" id="fileHr" accept=".gpx,.tcx,.xml">
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="ctl-row">
+      <label class="small">
+        Time offset — shift watch HR relative to GPS
+        <input type="range" id="offset" min="-300" max="300" step="1" value="0">
+      </label>
+      <span class="offsetval" id="offsetVal">+0 s</span>
+      <input type="number" id="offsetNum" value="0" step="1">
+      <span class="hint">Nudge if the two clocks drift. Watch coverage below tells you when it fits.</span>
+    </div>
+  </div>
+
+  <div id="body">
+    <div class="empty" id="emptyMsg">Load both files to see the merge.</div>
+  </div>
+
+  <div class="steps">
+    <b>Getting the two files &amp; uploading:</b><br>
+    1. Record your run with GPS on your <b>phone app</b> and the same run on your <b>watch</b> — start them close together so the clocks line up.<br>
+    2. Phone: export the activity as <b>GPX</b> (it must include <code>&lt;time&gt;</code> stamps).<br>
+    3. Watch: in the <b>Zepp app</b> open the workout → share/export as GPX or TCX. If Zepp already auto-synced it to Strava, you can instead open that Strava activity → <b>Export Original</b>.<br>
+    4. Merge here, download, and upload the result to Strava. If the watch version already synced, <b>delete that Strava activity</b> so you don't get a duplicate (or turn off Zepp→Strava auto-sync and only upload merged files).
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const state={gps:null,hr:null};
+
+/* ---------- parsing ---------- */
+function byLocal(node,name){
+  const out=[];
+  const all=node.getElementsByTagName('*');
+  for(const el of all){ if(el.localName===name) out.push(el); }
+  return out;
+}
+function firstLocal(node,name){
+  const all=node.getElementsByTagName('*');
+  for(const el of all){ if(el.localName===name) return el; }
+  return null;
+}
+function parseFile(text){
+  const doc=new DOMParser().parseFromString(text,'application/xml');
+  if(doc.querySelector('parsererror')) throw new Error('Not valid XML');
+  const isTcx=!!firstLocal(doc,'TrainingCenterDatabase') || byLocal(doc,'Trackpoint').length>0;
+  const pts=[];
+  if(isTcx){
+    for(const tp of byLocal(doc,'Trackpoint')){
+      const t=firstLocal(tp,'Time');
+      if(!t) continue;
+      const time=Date.parse(t.textContent.trim());
+      const pos=firstLocal(tp,'Position');
+      let lat=null,lon=null;
+      if(pos){
+        const la=firstLocal(pos,'LatitudeDegrees'), lo=firstLocal(pos,'LongitudeDegrees');
+        if(la&&lo){lat=parseFloat(la.textContent);lon=parseFloat(lo.textContent);}
+      }
+      const alt=firstLocal(tp,'AltitudeMeters');
+      const hrEl=firstLocal(tp,'HeartRateBpm');
+      const hr=hrEl?parseInt((firstLocal(hrEl,'Value')||hrEl).textContent):null;
+      const cadEl=firstLocal(tp,'Cadence');
+      const cad=cadEl?parseInt(cadEl.textContent):null;
+      pts.push({t:time,lat,lon,ele:alt?parseFloat(alt.textContent):null,hr:isNaN(hr)?null:hr,cad:isNaN(cad)?null:cad});
+    }
+  }else{
+    for(const tp of byLocal(doc,'trkpt')){
+      const time=Date.parse((firstLocal(tp,'time')?.textContent||'').trim());
+      const lat=parseFloat(tp.getAttribute('lat'));
+      const lon=parseFloat(tp.getAttribute('lon'));
+      const ele=firstLocal(tp,'ele');
+      const hrEl=firstLocal(tp,'hr');
+      const cadEl=firstLocal(tp,'cad');
+      pts.push({
+        t:time,lat,lon,
+        ele:ele?parseFloat(ele.textContent):null,
+        hr:hrEl?parseInt(hrEl.textContent):null,
+        cad:cadEl?parseInt(cadEl.textContent):null
+      });
+    }
+  }
+  return pts.filter(p=>!isNaN(p.t)).sort((a,b)=>a.t-b.t);
+}
+
+/* ---------- geo helpers ---------- */
+function haversine(a,b){
+  const R=6371000,toR=x=>x*Math.PI/180;
+  const dLat=toR(b.lat-a.lat),dLon=toR(b.lon-a.lon);
+  const s=Math.sin(dLat/2)**2+Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+function totalDist(pts){
+  let d=0,prev=null;
+  for(const p of pts){ if(p.lat!=null){ if(prev)d+=haversine(prev,p); prev=p; } }
+  return d;
+}
+
+/* ---------- merge ---------- */
+function hrAt(samples, t){
+  // linear interpolation over hr samples (already offset-applied), null if gap too big
+  const MAXGAP=30000;
+  let lo=0,hi=samples.length-1;
+  if(t<=samples[0].t) return (samples[0].t-t)<=MAXGAP?samples[0]:null;
+  if(t>=samples[hi].t) return (t-samples[hi].t)<=MAXGAP?samples[hi]:null;
+  while(hi-lo>1){const m=(lo+hi)>>1; if(samples[m].t<=t)lo=m;else hi=m;}
+  const a=samples[lo],b=samples[hi];
+  if(b.t-a.t>MAXGAP*2) return null;
+  const f=(t-a.t)/(b.t-a.t);
+  const lerp=(x,y)=> (x==null||y==null)?(x??y):Math.round(x+(y-x)*f);
+  return {hr:lerp(a.hr,b.hr),cad:lerp(a.cad,b.cad)};
+}
+function merge(){
+  const gpsPts=state.gps.filter(p=>p.lat!=null && !isNaN(p.lat));
+  const offMs=(+$('offsetNum').value||0)*1000;
+  const hrSamples=state.hr.filter(p=>p.hr!=null).map(p=>({t:p.t+offMs,hr:p.hr,cad:p.cad}));
+  let covered=0;
+  const out=gpsPts.map(p=>{
+    const s=hrSamples.length?hrAt(hrSamples,p.t):null;
+    if(s&&s.hr!=null)covered++;
+    return {...p,mhr:s?s.hr:null,mcad:s?s.cad:null};
+  });
+  return {out,covered,hrSamples};
+}
+
+/* ---------- drawing ---------- */
+function drawTrack(pts){
+  const c=$('cvMap'); if(!c)return;
+  const dpr=Math.min(devicePixelRatio||1,2);
+  const w=c.clientWidth, h=260;
+  c.width=w*dpr; c.height=h*dpr; c.style.height=h+'px';
+  const ctx=c.getContext('2d'); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,w,h);
+  const g=pts.filter(p=>p.lat!=null);
+  if(g.length<2)return;
+  let minLa=1e9,maxLa=-1e9,minLo=1e9,maxLo=-1e9;
+  for(const p of g){minLa=Math.min(minLa,p.lat);maxLa=Math.max(maxLa,p.lat);
+    minLo=Math.min(minLo,p.lon);maxLo=Math.max(maxLo,p.lon);}
+  const pad=24, latR=(maxLa-minLa)||1e-6, lonR=(maxLo-minLo)||1e-6;
+  const midLat=(minLa+maxLa)/2, aspect=Math.cos(midLat*Math.PI/180);
+  const sx=(w-2*pad)/(lonR*aspect), sy=(h-2*pad)/latR, s=Math.min(sx,sy);
+  const ox=(w-lonR*aspect*s)/2, oy=(h-latR*s)/2;
+  const X=p=>ox+(p.lon-minLo)*aspect*s;
+  const Y=p=>h-(oy+(p.lat-minLa)*s);
+  // color by HR if available
+  const hrs=g.filter(p=>p.mhr!=null).map(p=>p.mhr);
+  const loH=hrs.length?Math.min(...hrs):0, hiH=hrs.length?Math.max(...hrs):1;
+  ctx.lineWidth=3; ctx.lineJoin='round'; ctx.lineCap='round';
+  for(let i=1;i<g.length;i++){
+    const p=g[i];
+    ctx.beginPath();
+    ctx.moveTo(X(g[i-1]),Y(g[i-1]));
+    ctx.lineTo(X(p),Y(p));
+    if(p.mhr!=null&&hiH>loH){
+      const f=(p.mhr-loH)/(hiH-loH);
+      const r=Math.round(76+f*(255-76)),gr=Math.round(194-f*(194-90)),b=Math.round(255-f*(255-77));
+      ctx.strokeStyle=`rgb(${r},${gr},${b})`;
+    }else ctx.strokeStyle='#4cc2ff';
+    ctx.stroke();
+  }
+  ctx.fillStyle='#3fb950';ctx.beginPath();ctx.arc(X(g[0]),Y(g[0]),4,0,7);ctx.fill();
+  ctx.fillStyle='#ff5a4d';ctx.beginPath();ctx.arc(X(g[g.length-1]),Y(g[g.length-1]),4,0,7);ctx.fill();
+}
+function drawHr(pts){
+  const c=$('cvHr'); if(!c)return;
+  const dpr=Math.min(devicePixelRatio||1,2);
+  const w=c.clientWidth,h=260;
+  c.width=w*dpr;c.height=h*dpr;c.style.height=h+'px';
+  const ctx=c.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);
+  const s=pts.filter(p=>p.mhr!=null);
+  if(s.length<2){ctx.fillStyle='#8b98a8';ctx.font='13px sans-serif';
+    ctx.fillText('No overlapping heart-rate data at this offset.',12,h/2);return;}
+  const pad=28, t0=s[0].t,t1=s[s.length-1].t;
+  const lo=Math.min(...s.map(p=>p.mhr))-5, hi=Math.max(...s.map(p=>p.mhr))+5;
+  const X=t=>pad+(t-t0)/(t1-t0||1)*(w-2*pad);
+  const Y=v=>h-pad-(v-lo)/(hi-lo||1)*(h-2*pad);
+  ctx.strokeStyle='#2b3440';ctx.lineWidth=1;
+  [lo,(lo+hi)/2,hi].forEach(v=>{const y=Y(v);ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(w-pad,y);ctx.stroke();
+    ctx.fillStyle='#8b98a8';ctx.font='10px monospace';ctx.fillText(Math.round(v),4,y+3);});
+  ctx.strokeStyle='#ff5a4d';ctx.lineWidth=2;ctx.beginPath();
+  s.forEach((p,i)=>{const x=X(p.t),y=Y(p.mhr);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+  ctx.stroke();
+}
+
+/* ---------- render ---------- */
+function fmtDur(ms){const s=Math.round(ms/1000);const h=s/3600|0,m=(s%3600)/60|0,ss=s%60;
+  return (h?h+':':'')+String(m).padStart(h?2:1,'0')+':'+String(ss).padStart(2,'0');}
+
+function render(){
+  if(!state.gps||!state.hr){$('body').innerHTML='<div class="empty" id="emptyMsg">Load both files to see the merge.</div>';return;}
+  const {out,covered,hrSamples}=merge();
+  const gpsN=out.length;
+  const cov=gpsN?Math.round(covered/gpsN*100):0;
+  const dist=totalDist(out);
+  const dur=out.length?out[out.length-1].t-out[0].t:0;
+  const hrVals=out.filter(p=>p.mhr!=null).map(p=>p.mhr);
+  const avg=hrVals.length?Math.round(hrVals.reduce((a,b)=>a+b,0)/hrVals.length):'—';
+  const max=hrVals.length?Math.max(...hrVals):'—';
+
+  $('body').innerHTML=`
+    <div class="viz">
+      <div class="card"><h4>Route · colored by heart rate</h4><canvas id="cvMap"></canvas></div>
+      <div class="card"><h4>Heart rate over time</h4><canvas id="cvHr"></canvas></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">Distance</div><div class="v">${(dist/1000).toFixed(2)}<small> km</small></div></div>
+      <div class="stat"><div class="k">Duration</div><div class="v">${fmtDur(dur)}</div></div>
+      <div class="stat"><div class="k">Avg HR</div><div class="v">${avg}<small> bpm</small></div></div>
+      <div class="stat"><div class="k">Max HR</div><div class="v">${max}<small> bpm</small></div></div>
+    </div>
+    <div class="cov">HR coverage: <b>${cov}%</b> of ${gpsN} trackpoints matched
+      (${hrSamples.length} HR samples in watch file).
+      <div class="bar"><span style="width:${cov}%;background:${cov>85?'var(--ok)':cov>50?'var(--warn)':'var(--hr)'}"></span></div>
+    </div>
+    <div class="actions">
+      <button class="go" id="export">Download merged GPX</button>
+      <span class="hint">${cov<70?'Low coverage — try nudging the time offset.':'Ready for Strava.'}</span>
+    </div>`;
+  drawTrack(out); drawHr(out);
+  $('export').onclick=()=>exportGpx(out);
+}
+
+/* ---------- export ---------- */
+function iso(t){return new Date(t).toISOString().replace(/\.\d+Z$/,'Z');}
+function exportGpx(pts){
+  let x=`<?xml version="1.0" encoding="UTF-8"?>\n`;
+  x+=`<gpx version="1.1" creator="Track+HR Merge" xmlns="http://www.topografix.com/GPX/1/1" `;
+  x+=`xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">\n`;
+  x+=` <trk><name>Merged activity</name><type>running</type><trkseg>\n`;
+  for(const p of pts){
+    if(p.lat==null||isNaN(p.lat))continue;
+    x+=`  <trkpt lat="${p.lat}" lon="${p.lon}">`;
+    if(p.ele!=null)x+=`<ele>${p.ele}</ele>`;
+    x+=`<time>${iso(p.t)}</time>`;
+    if(p.mhr!=null||p.mcad!=null){
+      x+=`<extensions><gpxtpx:TrackPointExtension>`;
+      if(p.mhr!=null)x+=`<gpxtpx:hr>${p.mhr}</gpxtpx:hr>`;
+      if(p.mcad!=null)x+=`<gpxtpx:cad>${p.mcad}</gpxtpx:cad>`;
+      x+=`</gpxtpx:TrackPointExtension></extensions>`;
+    }
+    x+=`</trkpt>\n`;
+  }
+  x+=` </trkseg></trk>\n</gpx>\n`;
+  const blob=new Blob([x],{type:'application/gpx+xml'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='merged-activity.gpx';a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ---------- file wiring ---------- */
+function summarize(pts){
+  const geo=pts.filter(p=>p.lat!=null&&!isNaN(p.lat)).length;
+  const hr=pts.filter(p=>p.hr!=null).length;
+  const dur=pts.length?fmtDur(pts[pts.length-1].t-pts[0].t):'—';
+  return {geo,hr,dur,n:pts.length};
+}
+function wire(kind){
+  const drop=$(kind==='gps'?'dropGps':'dropHr');
+  const input=$(kind==='gps'?'fileGps':'fileHr');
+  const nameEl=$(kind==='gps'?'nameGps':'nameHr');
+  const metaEl=$(kind==='gps'?'metaGps':'metaHr');
+  const load=file=>{
+    const r=new FileReader();
+    r.onload=()=>{
+      try{
+        const pts=parseFile(r.result);
+        if(!pts.length)throw new Error('No timestamped points found');
+        state[kind]=pts;
+        drop.classList.add('filled');
+        nameEl.textContent=file.name;
+        const s=summarize(pts);
+        metaEl.innerHTML=`<span><b>${s.n}</b> pts</span><span><b>${s.geo}</b> GPS</span>`+
+          `<span><b>${s.hr}</b> HR</span><span>${s.dur}</span>`;
+        render();
+      }catch(e){
+        nameEl.textContent='';
+        metaEl.innerHTML=`<span style="color:var(--hr)">Couldn't read: ${e.message}</span>`;
+      }
+    };
+    r.readAsText(file);
+  };
+  drop.onclick=()=>input.click();
+  input.onchange=e=>{if(e.target.files[0])load(e.target.files[0]);};
+  drop.ondragover=e=>{e.preventDefault();drop.style.borderColor=kind==='gps'?'var(--gps)':'var(--hr)';};
+  drop.ondragleave=()=>{drop.style.borderColor='';};
+  drop.ondrop=e=>{e.preventDefault();drop.style.borderColor='';if(e.dataTransfer.files[0])load(e.dataTransfer.files[0]);};
+}
+wire('gps');wire('hr');
+
+// offset controls stay in sync
+$('offset').oninput=e=>{$('offsetNum').value=e.target.value;$('offsetVal').textContent=(e.target.value>=0?'+':'')+e.target.value+' s';render();};
+$('offsetNum').oninput=e=>{let v=Math.max(-300,Math.min(300,+e.target.value||0));$('offset').value=v;$('offsetVal').textContent=(v>=0?'+':'')+v+' s';render();};
+window.addEventListener('resize',()=>{if(state.gps&&state.hr)render();});
+</script>
+</body>
+</html>

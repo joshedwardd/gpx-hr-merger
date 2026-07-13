@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HR Merger — phone GPS × watch heart rate</title>
+  <meta name="description" content="Merge a phone GPS track with a watch heart-rate track into one Strava-ready GPX. Runs entirely in your browser." />
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>HR Merger</h1>
+      <span class="tag">phone GPS × watch heart rate → Strava GPX</span>
+    </header>
+    <p class="sub">Load the accurate GPS track from your phone and the heart-rate recording from
+      your watch. The tool lines them up by timestamp, writes the watch's HR (and cadence, if
+      present) onto every phone trackpoint, and exports one clean GPX for Strava.
+      Accepts <b>.gpx</b> and <b>.tcx</b> for either side. Everything runs in your browser —
+      no file ever leaves your device.</p>
+
+    <div class="grid">
+      <div id="drop-gps"></div>
+      <div id="drop-hr"></div>
+    </div>
+
+    <div class="controls">
+      <div class="ctl-row">
+        <label class="small" for="offset-range">
+          Time offset — shift watch HR relative to GPS
+          <input type="range" id="offset-range" min="-300" max="300" step="1" value="0" />
+        </label>
+        <output class="offsetval" id="offset-val" for="offset-range">+0 s</output>
+        <label class="visually-hidden" for="offset-num">Time offset in seconds</label>
+        <input type="number" id="offset-num" value="0" step="1" min="-300" max="300" />
+        <button type="button" id="auto-align" disabled>Auto-align</button>
+        <span class="hint">Nudge if the two clocks drift. The coverage bar below tells you when it fits.</span>
+      </div>
+    </div>
+
+    <div id="result">
+      <div class="empty">Load both files to see the merge.</div>
+    </div>
+
+    <div class="steps">
+      <b>Getting the two files &amp; uploading:</b><br />
+      1. Record the run with GPS on your <b>phone app</b> and the same run on your <b>watch</b> — start them close together so the clocks line up.<br />
+      2. Phone: export the activity as <b>GPX</b> (it must include <code>&lt;time&gt;</code> stamps).<br />
+      3. Watch: in the <b>Zepp app</b> open the workout, then share/export as GPX or TCX. If it already auto-synced to Strava, open that Strava activity and use <b>Export Original</b> instead.<br />
+      4. Merge here, download, upload the result to Strava, and <b>delete the duplicate watch-synced activity</b> if there is one.
+    </div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
