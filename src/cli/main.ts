@@ -87,6 +87,9 @@ try {
   console.log(`HR file  : ${report.hr.totalPoints} pts, ${report.hr.withHr} with HR, ${formatDuration(report.hr.durationMs)}`);
   console.log(`Offset   : ${sign}${result.offsetSeconds} s${result.offsetWasAuto ? ' (auto-aligned)' : ''}`);
   console.log(`Coverage : ${pct}% of ${report.mergedPoints} trackpoints got HR`);
+  if (report.hrSpikesDropped > 0) {
+    console.log(`Filtered : ${report.hrSpikesDropped} implausible HR samples (spikes / out of range)`);
+  }
   console.log(`Stats    : ${report.distanceKm.toFixed(2)} km, ${formatDuration(report.durationMs)}, avg ${report.avgHr ?? '—'} bpm, max ${report.maxHr ?? '—'} bpm`);
   console.log(`Wrote    : ${values.out}`);
   if (pct < 70) {

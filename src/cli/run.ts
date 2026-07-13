@@ -21,6 +21,7 @@ export interface RunMergeResult {
     hr: ParseSummary;
     warnings: string[];
     mergedPoints: number;
+    hrSpikesDropped: number;
     distanceKm: number;
     durationMs: number;
     avgHr: number | null;
@@ -42,7 +43,7 @@ export function runMerge(opts: RunMergeOptions): RunMergeResult {
 
   const offsetWasAuto = opts.offsetSeconds === undefined;
   const offsetSeconds = opts.offsetSeconds ?? autoAlign(gps.points, hr.points);
-  const { points, coverage } = mergeTracks(gps.points, hr.points, offsetSeconds);
+  const { points, coverage, hrSpikesDropped } = mergeTracks(gps.points, hr.points, offsetSeconds);
 
   const hrs = points.filter((p) => p.hr !== undefined).map((p) => p.hr!);
   return {
@@ -55,6 +56,7 @@ export function runMerge(opts: RunMergeOptions): RunMergeResult {
       hr: hr.summary,
       warnings,
       mergedPoints: points.length,
+      hrSpikesDropped,
       distanceKm: totalDistance(points) / 1000,
       durationMs: points.length ? points[points.length - 1].t - points[0].t : 0,
       avgHr: hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : null,

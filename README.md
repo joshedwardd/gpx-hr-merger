@@ -9,6 +9,7 @@ Merge a phone GPS track with a watch heart-rate track into one Strava-ready GPX 
 - Reads **GPX and TCX**, namespace-agnostic (handles `gpxtpx:hr`, `ns3:hr`, and friends)
 - Time-offset slider plus **Auto-align**, which finds the offset that maximizes HR coverage
 - Linear HR/cadence interpolation with a 30 s max-gap cutoff, so sensor dropouts stay honest gaps instead of invented data
+- Spike filter: HR samples outside 25–250 bpm or deviating wildly from their local median (optical-sensor spikes) are discarded before merging; the UI/CLI report how many
 - Leaflet map with the route colored by HR, an HR-over-time chart, distance/duration/avg/max HR stats, and a coverage indicator
 - Exports GPX 1.1 with the Garmin `TrackPointExtension` namespace, as accepted by Strava
 

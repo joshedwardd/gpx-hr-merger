@@ -1,8 +1,13 @@
 import type { MergedPoint, MergeResult, TrackPoint } from './types';
 
 export const MAX_GAP_MS = 30_000;
+export const HR_MIN = 25;
+export const HR_MAX = 250;
+const SPIKE_NEIGHBORS = 3;
+const SPIKE_MAX_NEIGHBOR_AGE_MS = 30_000;
+const SPIKE_THRESHOLD_BPM = 30;
 
-interface HrSample {
+export interface HrSample {
   t: number;
   hr: number;
   cad?: number;
@@ -13,9 +18,49 @@ interface Interpolated {
   cad?: number;
 }
 
-function buildHrSamples(hrPoints: TrackPoint[], offsetSeconds: number): HrSample[] {
+// lower median: for even-length windows the averaged median is not robust
+// when half the window is outliers (e.g. a double spike at a track edge);
+// hr spikes are upward, so rounding down is the conservative side
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[(sorted.length - 1) >> 1];
+}
+
+/**
+ * Drop implausible HR samples: values outside [HR_MIN, HR_MAX], and spikes
+ * that deviate more than SPIKE_THRESHOLD_BPM from the median of their local
+ * window (Hampel-style: the window includes the sample itself, so a minority
+ * of outliers cannot poison the median). Samples are dropped rather than
+ * replaced, so gaps stay honest and interpolation bridges them. A sample
+ * with too few close-in-time neighbors is kept — no basis to judge it.
+ */
+export function filterHrSamples(samples: HrSample[]): { samples: HrSample[]; dropped: number } {
+  const inRange = samples.filter((s) => s.hr >= HR_MIN && s.hr <= HR_MAX);
+  const kept: HrSample[] = [];
+  for (let i = 0; i < inRange.length; i++) {
+    const s = inRange[i];
+    const window: number[] = [];
+    for (
+      let j = Math.max(0, i - SPIKE_NEIGHBORS);
+      j <= Math.min(inRange.length - 1, i + SPIKE_NEIGHBORS);
+      j++
+    ) {
+      if (Math.abs(inRange[j].t - s.t) <= SPIKE_MAX_NEIGHBOR_AGE_MS) {
+        window.push(inRange[j].hr);
+      }
+    }
+    if (window.length >= 3 && Math.abs(s.hr - median(window)) > SPIKE_THRESHOLD_BPM) continue;
+    kept.push(s);
+  }
+  return { samples: kept, dropped: samples.length - kept.length };
+}
+
+function buildHrSamples(
+  hrPoints: TrackPoint[],
+  offsetSeconds: number,
+): { samples: HrSample[]; dropped: number } {
   const offMs = offsetSeconds * 1000;
-  return hrPoints
+  const raw = hrPoints
     .filter((p) => p.hr !== undefined)
     .map((p) => {
       const s: HrSample = { t: p.t + offMs, hr: p.hr! };
@@ -23,6 +68,7 @@ function buildHrSamples(hrPoints: TrackPoint[], offsetSeconds: number): HrSample
       return s;
     })
     .sort((a, b) => a.t - b.t);
+  return filterHrSamples(raw);
 }
 
 function sampleAt(samples: HrSample[], t: number, maxGapMs: number): Interpolated | null {
@@ -70,7 +116,7 @@ export function mergeTracks(
   const gps = gpsPoints.filter(
     (p): p is TrackPoint & { lat: number; lon: number } => p.lat !== undefined && p.lon !== undefined,
   );
-  const samples = buildHrSamples(hrPoints, offsetSeconds);
+  const { samples, dropped } = buildHrSamples(hrPoints, offsetSeconds);
   let covered = 0;
   const points: MergedPoint[] = gps.map((p) => {
     const merged: MergedPoint = { t: p.t, lat: p.lat, lon: p.lon };
@@ -83,7 +129,11 @@ export function mergeTracks(
     }
     return merged;
   });
-  return { points, coverage: points.length ? covered / points.length : 0 };
+  return {
+    points,
+    coverage: points.length ? covered / points.length : 0,
+    hrSpikesDropped: dropped,
+  };
 }
 
 function coverageAt(gps: TrackPoint[], samples: HrSample[], offsetMs: number, maxGapMs: number): number {
@@ -109,7 +159,7 @@ export function autoAlign(
   maxGapMs: number = MAX_GAP_MS,
 ): number {
   const gps = gpsPoints.filter((p) => p.lat !== undefined && p.lon !== undefined);
-  const samples = buildHrSamples(hrPoints, 0);
+  const { samples } = buildHrSamples(hrPoints, 0);
   if (gps.length === 0 || samples.length === 0) return 0;
 
   const cov = (off: number) => coverageAt(gps, samples, off * 1000, maxGapMs);

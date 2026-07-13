@@ -41,4 +41,6 @@ export interface MergeResult {
   points: MergedPoint[];
   /** fraction of GPS points that received an HR value, 0..1 */
   coverage: number;
+  /** HR samples rejected as implausible (out of range or spikes) */
+  hrSpikesDropped: number;
 }

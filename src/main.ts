@@ -64,13 +64,17 @@ function render(): void {
   }
   if (!mapView) buildResultDom();
 
-  const { points, coverage } = mergeTracks(state.gps.points, state.hr.points, state.offsetSeconds);
+  const { points, coverage, hrSpikesDropped } = mergeTracks(
+    state.gps.points,
+    state.hr.points,
+    state.offsetSeconds,
+  );
   const hrSampleCount = state.hr.summary.withHr;
 
   mapView!.update(points);
   drawHrChart(chartCanvas!, points);
   renderStats(statsEl!, points);
-  renderCoverage(covEl!, coverage, points.length, hrSampleCount);
+  renderCoverage(covEl!, coverage, points.length, hrSampleCount, hrSpikesDropped);
   hintEl!.textContent =
     points.length === 0
       ? 'No GPS points to export — the phone file has no coordinates.'
