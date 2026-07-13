@@ -3,9 +3,17 @@ export interface HrRange {
   max: number;
 }
 
+// single pass instead of Math.min/max spread, which overflows the call
+// stack on long activities (same crash hrStats guards against)
 export function hrRange(hrs: number[]): HrRange | null {
   if (hrs.length === 0) return null;
-  return { min: Math.min(...hrs), max: Math.max(...hrs) };
+  let min = Infinity;
+  let max = -Infinity;
+  for (const hr of hrs) {
+    if (hr < min) min = hr;
+    if (hr > max) max = hr;
+  }
+  return { min, max };
 }
 
 /** blue (low) → red (high) across the run's HR range */

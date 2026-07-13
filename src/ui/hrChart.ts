@@ -1,4 +1,5 @@
 import type { MergedPoint } from '../lib/types';
+import { hrRange } from './hrColor';
 
 export function drawHrChart(canvas: HTMLCanvasElement, points: MergedPoint[]): void {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -21,9 +22,9 @@ export function drawHrChart(canvas: HTMLCanvasElement, points: MergedPoint[]): v
   const pad = 30;
   const t0 = s[0].t;
   const t1 = s[s.length - 1].t;
-  const hrs = s.map((p) => p.hr!);
-  const lo = Math.min(...hrs) - 5;
-  const hi = Math.max(...hrs) + 5;
+  const range = hrRange(s.map((p) => p.hr!))!;
+  const lo = range.min - 5;
+  const hi = range.max + 5;
   const x = (t: number) => pad + ((t - t0) / (t1 - t0 || 1)) * (w - 2 * pad);
   const y = (v: number) => h - pad - ((v - lo) / (hi - lo || 1)) * (h - 2 * pad);
 

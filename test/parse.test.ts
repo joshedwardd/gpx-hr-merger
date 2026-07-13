@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { parseTrack } from '../src/lib/parse';
 import { ParseError } from '../src/lib/types';
-import { gpxNoHr, gpxWeirdPrefix, gpxWithHr, malformedXml, notTrackXml, tcxWithHr } from './fixtures';
+import {
+  gpxNoHr,
+  gpxPaused,
+  gpxWeirdPrefix,
+  gpxWithHr,
+  malformedXml,
+  notTrackXml,
+  tcxRunCadence,
+  tcxTwoLaps,
+  tcxWithHr,
+} from './fixtures';
 
 describe('parseTrack GPX', () => {
   it('parses trackpoints with gpxtpx HR extensions', () => {
@@ -30,6 +40,11 @@ describe('parseTrack GPX', () => {
     expect(points[0].hr).toBeUndefined();
     expect(summary.withHr).toBe(0);
   });
+
+  it('tags trkseg breaks so paused activities keep their segments', () => {
+    const { points } = parseTrack(gpxPaused);
+    expect(points.map((p) => p.seg)).toEqual([undefined, undefined, 1, 1]);
+  });
 });
 
 describe('parseTrack TCX', () => {
@@ -47,6 +62,16 @@ describe('parseTrack TCX', () => {
     expect(points[1].lat).toBeUndefined();
     expect(points[1].hr).toBe(121);
     expect(summary).toEqual({ totalPoints: 2, withGps: 1, withHr: 2, durationMs: 5_000 });
+  });
+
+  it('reads running cadence from the ActivityExtension RunCadence element', () => {
+    const { points } = parseTrack(tcxRunCadence);
+    expect(points[0].cad).toBe(88);
+  });
+
+  it('tags each Lap/Track as its own segment', () => {
+    const { points } = parseTrack(tcxTwoLaps);
+    expect(points.map((p) => p.seg)).toEqual([undefined, 1]);
   });
 });
 

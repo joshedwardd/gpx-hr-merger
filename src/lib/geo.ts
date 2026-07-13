@@ -14,11 +14,33 @@ export function haversine(a: { lat: number; lon: number }, b: { lat: number; lon
 export function totalDistance(points: TrackPoint[]): number {
   let dist = 0;
   let prev: { lat: number; lon: number } | null = null;
+  let prevSeg: number | undefined;
   for (const p of points) {
     if (p.lat === undefined || p.lon === undefined) continue;
     const cur = { lat: p.lat, lon: p.lon };
-    if (prev) dist += haversine(prev, cur);
+    if (prev && p.seg === prevSeg) dist += haversine(prev, cur);
     prev = cur;
+    prevSeg = p.seg;
   }
   return dist;
+}
+
+// moving time: sum of per-segment spans, so pause gaps between segments are
+// excluded just as they are from distance. single-segment activities collapse
+// to last-minus-first (elapsed), unchanged.
+export function movingDuration(points: TrackPoint[]): number {
+  let moving = 0;
+  let segStart: number | null = null;
+  let prevT = 0;
+  let prevSeg: number | undefined;
+  for (const p of points) {
+    if (segStart === null || p.seg !== prevSeg) {
+      if (segStart !== null) moving += prevT - segStart;
+      segStart = p.t;
+    }
+    prevT = p.t;
+    prevSeg = p.seg;
+  }
+  if (segStart !== null) moving += prevT - segStart;
+  return moving;
 }

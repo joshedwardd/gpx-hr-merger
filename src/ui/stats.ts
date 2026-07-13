@@ -1,4 +1,5 @@
-import { totalDistance } from '../lib/geo';
+import { movingDuration, totalDistance } from '../lib/geo';
+import { hrStats } from '../lib/hrStats';
 import type { MergedPoint } from '../lib/types';
 
 export function formatDuration(ms: number): string {
@@ -11,10 +12,10 @@ export function formatDuration(ms: number): string {
 
 export function renderStats(container: HTMLElement, points: MergedPoint[]): void {
   const distKm = totalDistance(points) / 1000;
-  const durMs = points.length ? points[points.length - 1].t - points[0].t : 0;
-  const hrs = points.filter((p) => p.hr !== undefined).map((p) => p.hr!);
-  const avg = hrs.length ? String(Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length)) : '—';
-  const max = hrs.length ? String(Math.max(...hrs)) : '—';
+  const durMs = movingDuration(points);
+  const { avg: avgHr, max: maxHr } = hrStats(points);
+  const avg = avgHr === null ? '—' : String(avgHr);
+  const max = maxHr === null ? '—' : String(maxHr);
   container.innerHTML = `
     <div class="stat"><div class="k">Distance</div><div class="v">${distKm.toFixed(2)}<small> km</small></div></div>
     <div class="stat"><div class="k">Duration</div><div class="v">${formatDuration(durMs)}</div></div>

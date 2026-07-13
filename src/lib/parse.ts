@@ -66,7 +66,11 @@ function parseTcxPoint(tp: Element): TrackPoint | null {
     const hr = int((firstByLocalName(hrEl, 'Value') ?? hrEl).textContent);
     if (hr !== undefined) p.hr = hr;
   }
-  const cad = int(firstByLocalName(tp, 'Cadence')?.textContent);
+  // <Cadence> is bike cadence; running watches put stride cadence in the
+  // ActivityExtension <RunCadence>. Prefer whichever is present.
+  const cad =
+    int(firstByLocalName(tp, 'Cadence')?.textContent) ??
+    int(firstByLocalName(tp, 'RunCadence')?.textContent);
   if (cad !== undefined) p.cad = cad;
   return p;
 }
@@ -97,16 +101,30 @@ export function parseTrack(text: string): ParseResult {
     throw new ParseError('invalid-xml', 'File is not valid XML');
   }
 
-  let raw: (TrackPoint | null)[];
+  // each Trackpoint/trkpt is parsed under its enclosing segment so that
+  // pause/lap breaks survive into the merged output (distance is not drawn
+  // straight across the gap, and Strava keeps the pauses).
+  const raw: (TrackPoint | null)[] = [];
+  const collect = (containers: Element[], pointTag: string, parse: (el: Element) => TrackPoint | null) => {
+    containers.forEach((container, seg) => {
+      for (const el of descendantsByLocalName(container, pointTag)) {
+        const p = parse(el);
+        if (p && seg > 0) p.seg = seg;
+        raw.push(p);
+      }
+    });
+  };
+
   const tcxPoints = descendantsByLocalName(doc, 'Trackpoint');
   if (firstByLocalName(doc, 'TrainingCenterDatabase') || tcxPoints.length > 0) {
-    raw = tcxPoints.map(parseTcxPoint);
+    const tracks = descendantsByLocalName(doc, 'Track');
+    collect(tracks.length ? tracks : [doc.documentElement], 'Trackpoint', parseTcxPoint);
   } else {
-    const gpxPoints = descendantsByLocalName(doc, 'trkpt');
-    if (gpxPoints.length === 0 && !firstByLocalName(doc, 'gpx')) {
+    const trksegs = descendantsByLocalName(doc, 'trkseg');
+    if (trksegs.length === 0 && descendantsByLocalName(doc, 'trkpt').length === 0 && !firstByLocalName(doc, 'gpx')) {
       throw new ParseError('unknown-format', 'Not a GPX or TCX file');
     }
-    raw = gpxPoints.map(parseGpxPoint);
+    collect(trksegs.length ? trksegs : [doc.documentElement], 'trkpt', parseGpxPoint);
   }
 
   const points = raw.filter((p): p is TrackPoint => p !== null).sort((a, b) => a.t - b.t);

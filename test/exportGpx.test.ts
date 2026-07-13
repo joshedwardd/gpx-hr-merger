@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildGpx } from '../src/lib/exportGpx';
+import { movingDuration, totalDistance } from '../src/lib/geo';
 import { parseTrack } from '../src/lib/parse';
 import type { MergedPoint } from '../src/lib/types';
 
@@ -38,5 +39,52 @@ describe('buildGpx', () => {
 
   it('escapes the track name', () => {
     expect(buildGpx(points, 'a <b> & "c"')).toContain('<name>a &lt;b&gt; &amp; &quot;c&quot;</name>');
+  });
+
+  it('emits one trkseg per source segment and round-trips the break', () => {
+    const paused: MergedPoint[] = [
+      { t: T0, lat: 52.52, lon: 13.405 },
+      { t: T0 + 10_000, lat: 52.521, lon: 13.405, seg: 1 },
+    ];
+    const xml = buildGpx(paused);
+    expect(xml.match(/<trkseg>/g)).toHaveLength(2);
+    expect(parseTrack(xml).points.map((p) => p.seg)).toEqual([undefined, 1]);
+  });
+});
+
+describe('totalDistance', () => {
+  it('does not draw distance across a segment break', () => {
+    const straight: MergedPoint[] = [
+      { t: T0, lat: 52.52, lon: 13.405 },
+      { t: T0 + 1000, lat: 52.521, lon: 13.405 },
+    ];
+    const across = totalDistance(straight);
+    const paused: MergedPoint[] = [straight[0], { ...straight[1], seg: 1 }];
+    expect(totalDistance(paused)).toBe(0);
+    expect(across).toBeGreaterThan(0);
+  });
+});
+
+describe('movingDuration', () => {
+  it('sums a single segment as last minus first', () => {
+    const pts: MergedPoint[] = [
+      { t: T0, lat: 52.52, lon: 13.405 },
+      { t: T0 + 60_000, lat: 52.521, lon: 13.405 },
+    ];
+    expect(movingDuration(pts)).toBe(60_000);
+  });
+
+  it('excludes the pause gap between segments', () => {
+    const pts: MergedPoint[] = [
+      { t: T0, lat: 52.52, lon: 13.405 },
+      { t: T0 + 60_000, lat: 52.521, lon: 13.405 },
+      { t: T0 + 660_000, lat: 52.526, lon: 13.405, seg: 1 },
+      { t: T0 + 720_000, lat: 52.527, lon: 13.405, seg: 1 },
+    ];
+    expect(movingDuration(pts)).toBe(120_000);
+  });
+
+  it('returns 0 for empty input', () => {
+    expect(movingDuration([])).toBe(0);
   });
 });

@@ -51,6 +51,42 @@ export const tcxWithHr = `<?xml version="1.0" encoding="UTF-8"?>
  </Activity></Activities>
 </TrainingCenterDatabase>`;
 
+export const tcxRunCadence = `<?xml version="1.0" encoding="UTF-8"?>
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
+  xmlns:ns3="http://www.garmin.com/xmlschemas/ActivityExtension/v2">
+ <Activities><Activity Sport="Running"><Lap StartTime="2026-07-01T08:00:00Z"><Track>
+  <Trackpoint>
+   <Time>2026-07-01T08:00:00Z</Time>
+   <HeartRateBpm><Value>140</Value></HeartRateBpm>
+   <Extensions><ns3:TPX><ns3:RunCadence>88</ns3:RunCadence></ns3:TPX></Extensions>
+  </Trackpoint>
+ </Track></Lap></Activity></Activities>
+</TrainingCenterDatabase>`;
+
+// paused activity: two trksegs. legs within each segment are ~111 m; the pause
+// gap between segments spans ~667 m that must NOT count as distance.
+export const gpxPaused = `<?xml version="1.0"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1"><trk><trkseg>
+ <trkpt lat="52.5200" lon="13.4050"><time>2026-07-01T08:00:00Z</time></trkpt>
+ <trkpt lat="52.5210" lon="13.4050"><time>2026-07-01T08:01:00Z</time></trkpt>
+</trkseg><trkseg>
+ <trkpt lat="52.5260" lon="13.4050"><time>2026-07-01T08:11:00Z</time></trkpt>
+ <trkpt lat="52.5270" lon="13.4050"><time>2026-07-01T08:12:00Z</time></trkpt>
+</trkseg></trk></gpx>`;
+
+// TCX with two Laps, each its own Track: an auto-pause across the lap boundary.
+export const tcxTwoLaps = `<?xml version="1.0"?>
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">
+ <Activities><Activity Sport="Running">
+  <Lap StartTime="2026-07-01T08:00:00Z"><Track>
+   <Trackpoint><Time>2026-07-01T08:00:00Z</Time><HeartRateBpm><Value>120</Value></HeartRateBpm></Trackpoint>
+  </Track></Lap>
+  <Lap StartTime="2026-07-01T08:10:00Z"><Track>
+   <Trackpoint><Time>2026-07-01T08:10:00Z</Time><HeartRateBpm><Value>140</Value></HeartRateBpm></Trackpoint>
+  </Track></Lap>
+ </Activity></Activities>
+</TrainingCenterDatabase>`;
+
 export const malformedXml = `<gpx><trk><trkseg><trkpt lat="1"`;
 
 export const notTrackXml = `<?xml version="1.0"?><root><thing>hello</thing></root>`;

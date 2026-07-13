@@ -6,6 +6,8 @@ export interface TrackPoint {
   ele?: number;
   hr?: number;
   cad?: number;
+  /** source segment index; a pause/lap break increments it */
+  seg?: number;
 }
 
 export type ParseErrorCode = 'invalid-xml' | 'unknown-format' | 'no-points';

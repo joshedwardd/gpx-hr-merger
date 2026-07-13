@@ -22,9 +22,17 @@ export function buildGpx(points: MergedPoint[], trackName = 'Merged activity'): 
     '<gpx version="1.1" creator="hr-merger"' +
       ' xmlns="http://www.topografix.com/GPX/1/1"' +
       ' xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">',
-    ` <trk><name>${escapeXml(trackName)}</name><trkseg>`,
+    ` <trk><name>${escapeXml(trackName)}</name>`,
   ];
+  let openSeg: number | undefined;
+  let started = false;
   for (const p of points) {
+    if (!started || p.seg !== openSeg) {
+      if (started) lines.push('  </trkseg>');
+      lines.push('  <trkseg>');
+      openSeg = p.seg;
+      started = true;
+    }
     let pt = `  <trkpt lat="${p.lat}" lon="${p.lon}">`;
     if (p.ele !== undefined) pt += `<ele>${p.ele}</ele>`;
     pt += `<time>${isoUtc(p.t)}</time>`;
@@ -37,6 +45,7 @@ export function buildGpx(points: MergedPoint[], trackName = 'Merged activity'): 
     pt += '</trkpt>';
     lines.push(pt);
   }
-  lines.push(' </trkseg></trk>', '</gpx>', '');
+  if (started) lines.push('  </trkseg>');
+  lines.push(' </trk>', '</gpx>', '');
   return lines.join('\n');
 }

@@ -71,16 +71,16 @@ function buildHrSamples(
   return filterHrSamples(raw);
 }
 
+function exact(s: HrSample): Interpolated {
+  return { hr: s.hr, ...(s.cad !== undefined && { cad: s.cad }) };
+}
+
 function sampleAt(samples: HrSample[], t: number, maxGapMs: number): Interpolated | null {
   if (samples.length === 0) return null;
   const first = samples[0];
   const last = samples[samples.length - 1];
-  if (t <= first.t) {
-    return first.t - t <= maxGapMs ? { hr: first.hr, ...(first.cad !== undefined && { cad: first.cad }) } : null;
-  }
-  if (t >= last.t) {
-    return t - last.t <= maxGapMs ? { hr: last.hr, ...(last.cad !== undefined && { cad: last.cad }) } : null;
-  }
+  if (t <= first.t) return first.t - t <= maxGapMs ? exact(first) : null;
+  if (t >= last.t) return t - last.t <= maxGapMs ? exact(last) : null;
   let lo = 0;
   let hi = samples.length - 1;
   while (hi - lo > 1) {
@@ -90,6 +90,10 @@ function sampleAt(samples: HrSample[], t: number, maxGapMs: number): Interpolate
   }
   const a = samples[lo];
   const b = samples[hi];
+  // an exact hit on a sample is a known value, not an interpolation, so the
+  // maxGap check (which guards against bridging a dropout) must not drop it
+  if (t === a.t) return exact(a);
+  if (t === b.t) return exact(b);
   if (b.t - a.t > maxGapMs) return null;
   const f = (t - a.t) / (b.t - a.t);
   const out: Interpolated = { hr: Math.round(a.hr + (b.hr - a.hr) * f) };
@@ -121,6 +125,7 @@ export function mergeTracks(
   const points: MergedPoint[] = gps.map((p) => {
     const merged: MergedPoint = { t: p.t, lat: p.lat, lon: p.lon };
     if (p.ele !== undefined) merged.ele = p.ele;
+    if (p.seg !== undefined) merged.seg = p.seg;
     const s = sampleAt(samples, p.t, maxGapMs);
     if (s) {
       covered++;

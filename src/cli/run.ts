@@ -1,5 +1,6 @@
 import { buildGpx } from '../lib/exportGpx';
-import { totalDistance } from '../lib/geo';
+import { movingDuration, totalDistance } from '../lib/geo';
+import { hrStats } from '../lib/hrStats';
 import { autoAlign, mergeTracks } from '../lib/merge';
 import { parseTrack } from '../lib/parse';
 import type { ParseSummary } from '../lib/types';
@@ -45,7 +46,7 @@ export function runMerge(opts: RunMergeOptions): RunMergeResult {
   const offsetSeconds = opts.offsetSeconds ?? autoAlign(gps.points, hr.points);
   const { points, coverage, hrSpikesDropped } = mergeTracks(gps.points, hr.points, offsetSeconds);
 
-  const hrs = points.filter((p) => p.hr !== undefined).map((p) => p.hr!);
+  const { avg: avgHr, max: maxHr } = hrStats(points);
   return {
     xml: buildGpx(points, opts.trackName),
     offsetSeconds,
@@ -58,9 +59,9 @@ export function runMerge(opts: RunMergeOptions): RunMergeResult {
       mergedPoints: points.length,
       hrSpikesDropped,
       distanceKm: totalDistance(points) / 1000,
-      durationMs: points.length ? points[points.length - 1].t - points[0].t : 0,
-      avgHr: hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : null,
-      maxHr: hrs.length ? Math.max(...hrs) : null,
+      durationMs: movingDuration(points),
+      avgHr,
+      maxHr,
     },
   };
 }
