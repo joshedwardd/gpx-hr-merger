@@ -63,8 +63,6 @@ export const tcxRunCadence = `<?xml version="1.0" encoding="UTF-8"?>
  </Track></Lap></Activity></Activities>
 </TrainingCenterDatabase>`;
 
-// paused activity: two trksegs. legs within each segment are ~111 m; the pause
-// gap between segments spans ~667 m that must NOT count as distance.
 export const gpxPaused = `<?xml version="1.0"?>
 <gpx xmlns="http://www.topografix.com/GPX/1/1"><trk><trkseg>
  <trkpt lat="52.5200" lon="13.4050"><time>2026-07-01T08:00:00Z</time></trkpt>
@@ -74,7 +72,6 @@ export const gpxPaused = `<?xml version="1.0"?>
  <trkpt lat="52.5270" lon="13.4050"><time>2026-07-01T08:12:00Z</time></trkpt>
 </trkseg></trk></gpx>`;
 
-// TCX with two Laps, each its own Track: an auto-pause across the lap boundary.
 export const tcxTwoLaps = `<?xml version="1.0"?>
 <TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">
  <Activities><Activity Sport="Running">

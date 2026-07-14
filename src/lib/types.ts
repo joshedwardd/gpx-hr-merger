@@ -1,12 +1,10 @@
 export interface TrackPoint {
-  /** epoch ms */
   t: number;
   lat?: number;
   lon?: number;
   ele?: number;
   hr?: number;
   cad?: number;
-  /** source segment index; a pause/lap break increments it */
   seg?: number;
 }
 
@@ -41,8 +39,6 @@ export interface MergedPoint extends TrackPoint {
 
 export interface MergeResult {
   points: MergedPoint[];
-  /** fraction of GPS points that received an HR value, 0..1 */
   coverage: number;
-  /** HR samples rejected as implausible (out of range or spikes) */
   hrSpikesDropped: number;
 }

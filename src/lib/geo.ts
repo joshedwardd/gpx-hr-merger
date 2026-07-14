@@ -25,9 +25,6 @@ export function totalDistance(points: TrackPoint[]): number {
   return dist;
 }
 
-// moving time: sum of per-segment spans, so pause gaps between segments are
-// excluded just as they are from distance. single-segment activities collapse
-// to last-minus-first (elapsed), unchanged.
 export function movingDuration(points: TrackPoint[]): number {
   let moving = 0;
   let segStart: number | null = null;

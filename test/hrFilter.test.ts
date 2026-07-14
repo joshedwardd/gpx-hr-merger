@@ -36,7 +36,6 @@ describe('filterHrSamples', () => {
   });
 
   it('does not judge samples against neighbors far away in time', () => {
-    // lone sample after a long dropout: neighbors are minutes old, keep it
     const res = filterHrSamples([s(0, 120), s(2, 121), s(300, 178)]);
     expect(res.samples.map((x) => x.hr)).toEqual([120, 121, 178]);
     expect(res.dropped).toBe(0);

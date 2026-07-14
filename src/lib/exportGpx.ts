@@ -12,10 +12,6 @@ function escapeXml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-/**
- * Build a GPX 1.1 document with Garmin TrackPointExtension HR/cadence,
- * as accepted by Strava.
- */
 export function buildGpx(points: MergedPoint[], trackName = 'Merged activity'): string {
   const lines: string[] = [
     '<?xml version="1.0" encoding="UTF-8"?>',

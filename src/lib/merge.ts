@@ -18,22 +18,11 @@ interface Interpolated {
   cad?: number;
 }
 
-// lower median: for even-length windows the averaged median is not robust
-// when half the window is outliers (e.g. a double spike at a track edge);
-// hr spikes are upward, so rounding down is the conservative side
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   return sorted[(sorted.length - 1) >> 1];
 }
 
-/**
- * Drop implausible HR samples: values outside [HR_MIN, HR_MAX], and spikes
- * that deviate more than SPIKE_THRESHOLD_BPM from the median of their local
- * window (Hampel-style: the window includes the sample itself, so a minority
- * of outliers cannot poison the median). Samples are dropped rather than
- * replaced, so gaps stay honest and interpolation bridges them. A sample
- * with too few close-in-time neighbors is kept — no basis to judge it.
- */
 export function filterHrSamples(samples: HrSample[]): { samples: HrSample[]; dropped: number } {
   const inRange = samples.filter((s) => s.hr >= HR_MIN && s.hr <= HR_MAX);
   const kept: HrSample[] = [];
@@ -90,8 +79,6 @@ function sampleAt(samples: HrSample[], t: number, maxGapMs: number): Interpolate
   }
   const a = samples[lo];
   const b = samples[hi];
-  // an exact hit on a sample is a known value, not an interpolation, so the
-  // maxGap check (which guards against bridging a dropout) must not drop it
   if (t === a.t) return exact(a);
   if (t === b.t) return exact(b);
   if (b.t - a.t > maxGapMs) return null;
@@ -105,12 +92,6 @@ function sampleAt(samples: HrSample[], t: number, maxGapMs: number): Interpolate
   return out;
 }
 
-/**
- * Write HR (and cadence) from hrPoints onto the geometry of gpsPoints.
- * offsetSeconds shifts the HR track relative to the GPS track.
- * GPS points whose timestamp is further than maxGapMs from usable HR
- * samples keep hr undefined.
- */
 export function mergeTracks(
   gpsPoints: TrackPoint[],
   hrPoints: TrackPoint[],
@@ -150,13 +131,6 @@ function coverageAt(gps: TrackPoint[], samples: HrSample[], offsetMs: number, ma
   return covered / gps.length;
 }
 
-/**
- * Search offsets in [-300, +300] s for the one that maximizes HR coverage.
- * Coverage typically plateaus over a range of offsets, so the midpoint of the
- * max-coverage plateau is returned; this centers the HR window on the GPS
- * window, which recovers the true clock shift when both tracks cover the
- * same activity. Coarse 5 s scan, then 1 s refinement of the plateau edges.
- */
 export function autoAlign(
   gpsPoints: TrackPoint[],
   hrPoints: TrackPoint[],

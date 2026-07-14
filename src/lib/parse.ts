@@ -66,8 +66,6 @@ function parseTcxPoint(tp: Element): TrackPoint | null {
     const hr = int((firstByLocalName(hrEl, 'Value') ?? hrEl).textContent);
     if (hr !== undefined) p.hr = hr;
   }
-  // <Cadence> is bike cadence; running watches put stride cadence in the
-  // ActivityExtension <RunCadence>. Prefer whichever is present.
   const cad =
     int(firstByLocalName(tp, 'Cadence')?.textContent) ??
     int(firstByLocalName(tp, 'RunCadence')?.textContent);
@@ -84,26 +82,17 @@ export function summarize(points: TrackPoint[]): ParseSummary {
   };
 }
 
-/**
- * Parse GPX or TCX text into normalized track points.
- * Namespace-agnostic: elements are matched by localName, so prefixed HR
- * extensions (gpxtpx:hr, ns3:hr, ...) all work.
- */
 export function parseTrack(text: string): ParseResult {
   let doc: Document;
   try {
     doc = new DOMParser().parseFromString(text, 'application/xml');
   } catch {
-    // browsers report malformed xml via a parsererror element; xmldom throws
     throw new ParseError('invalid-xml', 'File is not valid XML');
   }
   if (doc.getElementsByTagName('parsererror').length > 0) {
     throw new ParseError('invalid-xml', 'File is not valid XML');
   }
 
-  // each Trackpoint/trkpt is parsed under its enclosing segment so that
-  // pause/lap breaks survive into the merged output (distance is not drawn
-  // straight across the gap, and Strava keeps the pauses).
   const raw: (TrackPoint | null)[] = [];
   const collect = (containers: Element[], pointTag: string, parse: (el: Element) => TrackPoint | null) => {
     containers.forEach((container, seg) => {

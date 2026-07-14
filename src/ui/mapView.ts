@@ -31,9 +31,6 @@ export class MapView {
       return hrColor(range.min + (bin / COLOR_BINS) * (range.max - range.min), range);
     };
 
-    // group consecutive same-color points into one polyline to keep layer count
-    // low, and break the line at pause/lap boundaries so no phantom straight
-    // segment is drawn across the gap
     let runColor = colorOf(points[1]);
     let run: L.LatLngExpression[] = [[points[0].lat, points[0].lon]];
     const flush = () => {

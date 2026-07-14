@@ -62,9 +62,6 @@ describe('mergeTracks', () => {
   });
 
   it('keeps HR on a GPS point that lands exactly on a sample before a dropout', () => {
-    // HR samples up to 100s, then resume at 145s (45s > MAX_GAP dropout).
-    // a point exactly at 100s has a known value and must not be dropped by
-    // the interpolation gap guard.
     const samples = [hr(99, 150), hr(100, 150), hr(145, 155), hr(146, 155)];
     const res = mergeTracks([gps(100)], samples, 0);
     expect(res.points[0].hr).toBe(150);
